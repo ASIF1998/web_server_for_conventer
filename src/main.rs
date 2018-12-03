@@ -111,7 +111,7 @@ fn get_number<T> (name: &str, hash: &HashMap<String, Vec<String>, std::collectio
         }
 
         None => {
-            panic!("Nooo");
+            return "None".parse::<T>();
         }
     };
 

@@ -22,10 +22,10 @@ use std::format;
 
 use std::collections::HashMap;
 
-const LOCAL: &str = "localhost:3016";
+const LOCAL: &str = "localhost:3024";
 
 lazy_static! {
-    static ref exchangeRates: Box<[Box<[f64]>]> = Box::new([
+    static ref exchangeRates: Box<[Box<[f32]>]> = Box::new([
         Box::new([1.0, 0.37907, 0.30366, 249.821, 1.36576, 6.58758, 67.0193, 49.7280, 0.88300]),
         Box::new([2.63583, 1.0, 0.80039, 658.486, 183.302, 3.60207, 17.3803, 176.651, 131.074, 2.32937]),
         Box::new([3.28085, 1.24368, 1.0, 819.625, 228.158, 4.48084, 21.6128, 219.880, 163.150, 2.89700]),
@@ -37,62 +37,32 @@ lazy_static! {
         Box::new([0.01977, 0.00749, 0.00749, 0.00600, 4.93784, 1.37454, 0.02699, 0.13021, 1.32467, 1.0, 0.01745]),
         Box::new([1.13156, 0.42930, 0.34361, 282.688, 78.6916, 1.54637, 7.46138, 75.8364, 56.2702, 1.0])
     ]);
+
+
+    static ref lengthValues: Box<[Box<[f32]>]> = Box::new([
+        Box::new([1.0, 100.0, 1000.0, 0.000621371, 1.09361296]),
+        Box::new([0.01, 1.0, 10.0, 0.0000062137,0.00109361]),
+        Box::new([0.001, 0.1, 1.0, 0.0000062137, 0.00109361]),
+        Box::new([1609.34, 160934.0, 1609000.0, 1.0, 1759.99469184]),
+        Box::new([0.9144, 91.44, 914.4, 0.000568182, 1.0])
+    ]);
 }
 
 fn main() {
     let mut router = Router::new();
     router.get("/", get_index_form, "root");
     router.post("/currency_converter", currency_converter_handler, "currency_converter");
+    router.post("/length_converter", length_converter, "length_converter");
     println!("Serving on {}", LOCAL);
     Iron::new(router).http(LOCAL).expect("Noooo");
 }
 
 fn currency_converter_handler(request: &mut Request) -> IronResult<Response> {
-    let mut response = Response::new();
-    response.set_mut(mime!(Text/Html; Charset=Utf8));
+    convertig(request, &exchangeRates, "Конвентер валют")
+}
 
-    let form_data = request.get::<UrlEncodedBody>().expect("Noo data");
-
-    let sel1 = match  get_number::<isize>("sel1", &form_data) {
-        Ok(t) => {
-            t
-        }
-
-        Err(e) => {
-            response.set_mut(status::BadRequest);
-            response.set_mut(format!("Error: {:?}", e));
-            return Ok(response);
-        }
-    };
-
-
-    let sel2 = match get_number::<isize>("sel2", &form_data) {
-        Ok(t) => {
-            t
-        }
-
-        Err(e) => {
-            response.set_mut(status::BadRequest);
-            response.set_mut(format!("Error: {:?}", e));
-            return Ok(response);
-        }
-    };
-
-    let value = match get_number::<f32>("input", &form_data) {
-        Ok(t) => {
-            t
-        }
-
-        Err(e) => {
-            response.set_mut(status::BadRequest);
-            response.set_mut(format!("Error: {:?}", e));
-            return Ok(response);
-        }
-    };
-
-    response.set_mut(status::Ok);
-    response.set_mut(format!("Data: {} {} {}", sel1, sel2, value));
-    Ok(response)
+fn length_converter(request: &mut Request) -> IronResult<Response> {
+    convertig(request, &lengthValues, "Конвентер длин")
 }
 
 fn get_index_form(_: &mut Request) -> IronResult<Response> {
@@ -146,4 +116,53 @@ fn get_number<T> (name: &str, hash: &HashMap<String, Vec<String>, std::collectio
     };
 
     num[0].parse::<T>()
+}
+
+fn convertig(request: &mut Request, data: &Box<[Box<[f32]>]>, title: &str) -> IronResult<Response> {
+    let mut response = Response::new();
+    response.set_mut(mime!(Text/Html; Charset=Utf8));
+
+    let form_data = request.get::<UrlEncodedBody>().expect("Noo data");
+
+    let sel1 = match  get_number::<usize>("sel1", &form_data) {
+        Ok(t) => {
+            t
+        }
+
+        Err(e) => {
+            response.set_mut(status::BadRequest);
+            response.set_mut(format!("Error: {:?}", e));
+            return Ok(response);
+        }
+    };
+
+
+    let sel2 = match get_number::<usize>("sel2", &form_data) {
+        Ok(t) => {
+            t
+        }
+
+        Err(e) => {
+            response.set_mut(status::BadRequest);
+            response.set_mut(format!("Error: {:?}", e));
+            return Ok(response);
+        }
+    };
+
+    let value = match get_number::<f32>("input", &form_data) {
+        Ok(t) => {
+            t
+        }
+
+        Err(e) => {
+            response.set_mut(status::BadRequest);
+            response.set_mut(format!("Error: {:?}", e));
+            return Ok(response);
+        }
+    };
+
+    response.set_mut(status::Ok);
+
+    response.set_mut(format!("<title>{}</title>Результат: {}", title, data[sel1][sel2] * value));
+    Ok(response)
 }
